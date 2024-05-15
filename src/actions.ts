@@ -1,21 +1,21 @@
-import type { ModuleInstance } from './main.js'
+import type { PhilipsSICPInstance } from './main.js'
 
-export function UpdateActions(self: ModuleInstance): void {
+export function UpdateActions(self: PhilipsSICPInstance): void {
 	self.setActionDefinitions({
 		sample_action: {
-			name: 'My First Action',
+			name: 'Turn off',
 			options: [
 				{
 					id: 'num',
 					type: 'number',
-					label: 'Test',
+					label: 'Off',
 					default: 5,
 					min: 0,
 					max: 100,
 				},
 			],
-			callback: async (event) => {
-				console.log('Hello world!', event.options.num)
+			callback: async () => {
+				self.SICP.sendTurnOff()
 			},
 		},
 	})

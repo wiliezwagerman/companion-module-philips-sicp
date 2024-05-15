@@ -1,7 +1,7 @@
 import { combineRgb } from '@companion-module/base'
-import type { ModuleInstance } from './main.js'
+import type { PhilipsSICPInstance } from './main.js'
 
-export function UpdateFeedbacks(self: ModuleInstance): void {
+export function UpdateFeedbacks(self: PhilipsSICPInstance): void {
 	self.setFeedbackDefinitions({
 		ChannelState: {
 			name: 'Example Feedback',

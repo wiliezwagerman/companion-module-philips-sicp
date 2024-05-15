@@ -1,20 +1,22 @@
 import { InstanceBase, runEntrypoint, InstanceStatus, SomeCompanionConfigField } from '@companion-module/base'
-import { GetConfigFields, type ModuleConfig } from './config.js'
+import { GetConfigFields, type PhilipsSICPConfig } from './config.js'
 import { UpdateVariableDefinitions } from './variables.js'
 import { UpgradeScripts } from './upgrades.js'
 import { UpdateActions } from './actions.js'
 import { UpdateFeedbacks } from './feedbacks.js'
+import { SICPClass } from './sicp.js'
 
-export class ModuleInstance extends InstanceBase<ModuleConfig> {
-	config!: ModuleConfig // Setup in init()
+export class PhilipsSICPInstance extends InstanceBase<PhilipsSICPConfig> {
+	config!: PhilipsSICPConfig // Setup in init()
+	SICP!: SICPClass
 
 	constructor(internal: unknown) {
 		super(internal)
 	}
 
-	async init(config: ModuleConfig): Promise<void> {
+	async init(config: PhilipsSICPConfig): Promise<void> {
 		this.config = config
-
+		this.SICP = new SICPClass(this.config)
 		this.updateStatus(InstanceStatus.Ok)
 
 		this.updateActions() // export actions
@@ -26,8 +28,9 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		this.log('debug', 'destroy')
 	}
 
-	async configUpdated(config: ModuleConfig): Promise<void> {
+	async configUpdated(config: PhilipsSICPConfig): Promise<void> {
 		this.config = config
+		this.SICP.updateConfig(config)
 	}
 
 	// Return config fields for web config
@@ -48,4 +51,4 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 	}
 }
 
-runEntrypoint(ModuleInstance, UpgradeScripts)
+runEntrypoint(PhilipsSICPInstance, UpgradeScripts)

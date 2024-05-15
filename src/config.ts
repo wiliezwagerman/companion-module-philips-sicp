@@ -1,6 +1,6 @@
 import { Regex, type SomeCompanionConfigField } from '@companion-module/base'
 
-export interface ModuleConfig {
+export interface PhilipsSICPConfig {
 	host: string
 	port: number
 }

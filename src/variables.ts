@@ -1,6 +1,6 @@
-import type { ModuleInstance } from './main.js'
+import type { PhilipsSICPInstance } from './main.js'
 
-export function UpdateVariableDefinitions(self: ModuleInstance): void {
+export function UpdateVariableDefinitions(self: PhilipsSICPInstance): void {
 	self.setVariableDefinitions([
 		{ variableId: 'variable1', name: 'My first variable' },
 		{ variableId: 'variable2', name: 'My second variable' },
