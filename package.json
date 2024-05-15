@@ -19,7 +19,9 @@
 		"url": "git+https://github.com/bitfocus/companion-module-your-module-name.git"
 	},
 	"dependencies": {
-		"@companion-module/base": "~1.7.0"
+		"@companion-module/base": "~1.7.0",
+		"eslint": "^8.57.0",
+		"socket.io": "^4.7.5"
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^1.4.2",
