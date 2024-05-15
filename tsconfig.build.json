@@ -1,17 +1,14 @@
 {
-	"extends": "./tsconfig-base.json",
+	"extends": "@companion-module/tools/tsconfig/node18/recommended",
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules/**", "src/**/*spec.ts", "src/**/__tests__/*", "src/**/__mocks__/*"],
 	"compilerOptions": {
 		"outDir": "./dist",
 		"baseUrl": "./",
-		// "importHelpers": false,
 		"paths": {
-			"*": ["./node_modules/*"],
-			"@companion/core-shared": ["../shared/src"]
+			"*": ["./node_modules/*"]
 		},
-		"types": ["node"],
-		"declaration": true,
-		"declarationMap": true
+		"module": "Node16",
+		"moduleResolution": "Node16"
 	}
 }
