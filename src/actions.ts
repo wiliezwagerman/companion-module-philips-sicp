@@ -2,20 +2,18 @@ import type { PhilipsSICPInstance } from './main.js'
 
 export function UpdateActions(self: PhilipsSICPInstance): void {
 	self.setActionDefinitions({
-		sample_action: {
+		Turn_Off: {
 			name: 'Turn off',
-			options: [
-				{
-					id: 'num',
-					type: 'number',
-					label: 'Off',
-					default: 5,
-					min: 0,
-					max: 100,
-				},
-			],
+			options: [],
 			callback: async () => {
 				self.SICP.sendTurnOff()
+			},
+		},
+		Turn_On: {
+			name: 'Turn on',
+			options: [],
+			callback: async () => {
+				self.SICP.sendTurnOn()
 			},
 		},
 	})
