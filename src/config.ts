@@ -5,6 +5,7 @@ export interface PhilipsSICPConfig {
 	port: number
 	wol: boolean
 	mac: string
+	broadcast: string
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -31,7 +32,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			id: 'wol',
 			label: 'WoL',
 			width: 6,
-			default: true,
+			default: false,
 			tooltip: 'Use this option when you want to use WoL instead of SICP for waking',
 		},
 		{
@@ -41,6 +42,17 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			width: 12,
 			default: '',
 			regex: '/^([0-9a-f]{2}([:.-]{0,1}|$)){6}$/i',
+			isVisible: (options) => {
+				return options.wol === true
+			},
+		},
+		{
+			type: 'textinput',
+			id: 'broadcast',
+			label: 'Broadcast ip',
+			width: 12,
+			default: '255.255.255.255',
+			regex: Regex.IP,
 			isVisible: (options) => {
 				return options.wol === true
 			},

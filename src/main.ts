@@ -16,7 +16,7 @@ export class PhilipsSICPInstance extends InstanceBase<PhilipsSICPConfig> {
 
 	async init(config: PhilipsSICPConfig): Promise<void> {
 		this.config = config
-		this.SICP = new SICPClass(this.config)
+		this.SICP = new SICPClass(this)
 		this.updateStatus(InstanceStatus.Ok)
 
 		this.updateActions() // export actions
