@@ -1,4 +1,4 @@
-import { TCPHelper } from '@companion-module/base'
+import { DropdownChoiceId, TCPHelper } from '@companion-module/base'
 import { PhilipsSICPConfig } from './config.js'
 import wol from 'wake_on_lan'
 import { PhilipsSICPInstance } from './main.js'
@@ -41,12 +41,13 @@ export class SICPClass {
 		this.socket.on('error', (err) => {
 			this.#self.log('debug', 'Network error ' + err)
 			this.#self.log('error', 'Network error: ' + err.message)
+			this.#state.PowerState = false
 		})
 
 		this.socket.on('data', (data) => {
 			const dataArray = new Uint8Array(data)
-			this.#self.log('debug', 'Received data: ' + dataArray)
 			this.process_data(dataArray)
+			this.#self.log('debug', 'State: ' + this.#state)
 		})
 	}
 
@@ -57,7 +58,10 @@ export class SICPClass {
 				else this.#state.PowerState = false
 				break
 			}
-			case 0xad:
+			case 0xad: {
+				this.#state.InputSource = sicpcommands.Sources.find((t) => t.command[4] == data[4])?.choice.id
+				break
+			}
 			default:
 		}
 	}
@@ -111,5 +115,5 @@ export class SICPClass {
 
 interface SICPStatus {
 	PowerState: boolean
-	InputSource?: string | undefined
+	InputSource?: DropdownChoiceId | undefined
 }
