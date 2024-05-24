@@ -20,7 +20,7 @@
 		"entrypoint": "../dist/main.js"
 	},
 	"legacyIds": [],
-	"manufacturer": "AAAndijk",
-	"products": ["SICP control"],
-	"keywords": []
+	"manufacturer": "Philips",
+	"products": ["SICProtocol"],
+	"keywords": ["Remote", "SICP", "Protocol"]
 }

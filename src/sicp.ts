@@ -59,7 +59,7 @@ export class SICPClass {
 				break
 			}
 			case 0xad: {
-				this.#state.InputSource = sicpcommands.Sources.find((t) => t.command[4] == data[4])?.choice.id
+				this.#state.InputSource = sicpcommands.Sources.find((t) => t.command == data[4])?.choice.id
 				break
 			}
 			default:
@@ -74,12 +74,16 @@ export class SICPClass {
 		}
 	}
 
-	sendTurnOff(): void {
-		void this.sendCommand(sicpcommands.TurnOffCommand)
+	SwitchPower(state: boolean): void {
+		const Command: Array<number> = sicpcommands.BaseCommand
+		Command.push(0x18)
+		if (state) Command.push(0x01)
+		else Command.push(0x02)
+		void this.sendCommand(sicpcommands.CompleteCommand(Command))
 	}
 
 	sendTurnOn(): void {
-		if (!this.#config.wol) void this.sendCommand(sicpcommands.TurnOnCommand)
+		if (!this.#config.wol) this.SwitchPower(true)
 		else {
 			const macAdd: string = this.#config.mac.replace(/[:.-]/g, '')
 			const options: wol.WakeOptions = {
@@ -96,11 +100,16 @@ export class SICPClass {
 	}
 
 	sendSetSource(Source: string): void {
-		const command: number[] | undefined = sicpcommands.Sources.find((entry) => entry.choice.id == Source)?.command
-		if (command) void this.sendCommand(command)
+		const Command: Array<number> = sicpcommands.BaseCommand
+		const command: number | undefined = sicpcommands.Sources.find((entry) => entry.choice.id == Source)?.command
+		if (!command) return
+		Command.push(0xac)
+		Command.push(command)
+		Command.push(0x09, 0x01, 0x00)
+		void this.sendCommand(sicpcommands.CompleteCommand(Command))
 	}
 
-	async sendCommand(SICPrequest: Array<number>): Promise<boolean> {
+	async sendCommand(SICPrequest: Uint8Array): Promise<boolean> {
 		const buffer = Buffer.from(SICPrequest)
 		this.#self.log('debug', 'buffer:' + buffer.readInt8())
 		if (this.socket == undefined || !this.socket.isConnected) this.init_tcp()

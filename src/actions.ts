@@ -7,7 +7,7 @@ export function UpdateActions(self: PhilipsSICPInstance): void {
 			name: 'Turn off',
 			options: [],
 			callback: async () => {
-				self.SICP.sendTurnOff()
+				self.SICP.SwitchPower(false)
 			},
 		},
 		Turn_On: {
