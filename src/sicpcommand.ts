@@ -6,9 +6,6 @@ import { DropdownChoice } from '@companion-module/base'
 //const GetPowerState: Array<number> = [0x05, 0x01, 0x00, 0x19, 0x1d]
 export const BaseCommand: Array<number> = [0x01, 0x00]
 
-export const TurnOffCommand: Array<number> = [0x06, 0x01, 0x00, 0x18, 0x02, 0x1d]
-export const TurnOnCommand: Array<number> = [0x06, 0x01, 0x00, 0x18, 0x01, 0x1e]
-
 export const Sources: { choice: DropdownChoice; command: number }[] = [
 	{ choice: { id: 'HDMI1', label: 'HDMI 1' }, command: 0x0d },
 	{ choice: { id: 'HDMI2', label: 'HDMI 2' }, command: 0x06 },
@@ -16,7 +13,10 @@ export const Sources: { choice: DropdownChoice; command: number }[] = [
 	{ choice: { id: 'HDMI4', label: 'HDMI 4' }, command: 0x19 },
 	{ choice: { id: 'DVI', label: 'DVI' }, command: 0x0e },
 	{ choice: { id: 'VGA', label: 'VGA' }, command: 0x05 },
-	{ choice: { id: 'DP', label: 'DP' }, command: 0x0a },
+	{ choice: { id: 'VGA2', label: 'VGA 2' }, command: 0x1a },
+	{ choice: { id: 'VGA3', label: 'VGA 3' }, command: 0x1b },
+	{ choice: { id: 'DP', label: 'Display Port' }, command: 0x0a },
+	{ choice: { id: 'DP2', label: 'Display Port 2' }, command: 0x07 },
 ]
 
 export function CompleteCommand(input: Array<number>): Uint8Array {
@@ -36,7 +36,4 @@ export function Choices(): DropdownChoice[] {
 		return output.push(entry.choice)
 	})
 	return output
-}
-function sendSetSource(Source: any, string: any) {
-	throw new Error('Function not implemented.')
 }

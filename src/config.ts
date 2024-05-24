@@ -52,6 +52,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			label: 'Broadcast ip',
 			width: 12,
 			default: '255.255.255.255',
+			tooltip: 'WoL request are by default send to 255.255.255.255',
 			regex: Regex.IP,
 			isVisible: (options) => {
 				return options.wol === true
