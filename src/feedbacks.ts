@@ -3,16 +3,15 @@ import type { PhilipsSICPInstance } from './main.js'
 
 export function UpdateFeedbacks(self: PhilipsSICPInstance): void {
 	self.setFeedbackDefinitions({
-		ChannelState: {
+		PowerState: {
 			name: 'Display On',
 			type: 'boolean',
 			defaultStyle: {
-				bgcolor: combineRgb(255, 0, 0),
+				bgcolor: combineRgb(0, 255, 0),
 				color: combineRgb(0, 0, 0),
 			},
 			options: [],
-			callback: async () => {
-				await self.SICP.sendGetPowerState()
+			callback: () => {
 				return self.SICP.state.PowerState
 			},
 		},

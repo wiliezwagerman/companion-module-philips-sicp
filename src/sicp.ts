@@ -42,12 +42,13 @@ export class SICPClass {
 			this.#self.log('debug', 'Network error ' + err)
 			this.#self.log('error', 'Network error: ' + err.message)
 			this.state.PowerState = false
+			this.#self.checkFeedbacks()
 		})
 
 		this.socket.on('data', (data) => {
 			const dataArray = new Uint8Array(data)
 			this.process_data(dataArray)
-			this.#self.log('debug', 'State: ' + this.state)
+			this.#self.log('debug', 'State: ' + this.state.PowerState)
 		})
 	}
 
@@ -64,6 +65,7 @@ export class SICPClass {
 			}
 			default:
 		}
+		this.#self.checkFeedbacks()
 	}
 
 	updateConfig(config: PhilipsSICPConfig): void {
@@ -79,7 +81,9 @@ export class SICPClass {
 		Command.push(0x18)
 		if (state) Command.push(0x01)
 		else Command.push(0x02)
-		void this.sendCommand(sicpcommands.CompleteCommand(Command))
+		void this.sendCommand(sicpcommands.CompleteCommand(Command)).then(() => {
+			this.sendGetPowerState()
+		})
 	}
 
 	sendTurnOn(): void {
@@ -109,10 +113,10 @@ export class SICPClass {
 		void this.sendCommand(sicpcommands.CompleteCommand(Command))
 	}
 
-	async sendGetPowerState(): Promise<void> {
+	sendGetPowerState(): void {
 		const Command: Array<number> = sicpcommands.BaseCommand
 		Command.push(0x19)
-		await this.sendCommand(sicpcommands.CompleteCommand(Command))
+		void this.sendCommand(sicpcommands.CompleteCommand(Command))
 		return
 	}
 
