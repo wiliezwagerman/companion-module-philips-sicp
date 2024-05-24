@@ -18,7 +18,7 @@ export class SICPClass {
 		broadcast: '255.255.255.255',
 	}
 
-	#state: SICPStatus = {
+	state: SICPStatus = {
 		PowerState: false,
 	}
 
@@ -41,25 +41,25 @@ export class SICPClass {
 		this.socket.on('error', (err) => {
 			this.#self.log('debug', 'Network error ' + err)
 			this.#self.log('error', 'Network error: ' + err.message)
-			this.#state.PowerState = false
+			this.state.PowerState = false
 		})
 
 		this.socket.on('data', (data) => {
 			const dataArray = new Uint8Array(data)
 			this.process_data(dataArray)
-			this.#self.log('debug', 'State: ' + this.#state)
+			this.#self.log('debug', 'State: ' + this.state)
 		})
 	}
 
 	process_data(data: Uint8Array): void {
 		switch (data[3]) {
 			case 0x19: {
-				if (data[4] == 0x02) this.#state.PowerState = true
-				else this.#state.PowerState = false
+				if (data[4] == 0x02) this.state.PowerState = true
+				else this.state.PowerState = false
 				break
 			}
 			case 0xad: {
-				this.#state.InputSource = sicpcommands.Sources.find((t) => t.command == data[4])?.choice.id
+				this.state.InputSource = sicpcommands.Sources.find((t) => t.command == data[4])?.choice.id
 				break
 			}
 			default:
@@ -107,6 +107,13 @@ export class SICPClass {
 		Command.push(command)
 		Command.push(0x09, 0x01, 0x00)
 		void this.sendCommand(sicpcommands.CompleteCommand(Command))
+	}
+
+	async sendGetPowerState(): Promise<void> {
+		const Command: Array<number> = sicpcommands.BaseCommand
+		Command.push(0x19)
+		await this.sendCommand(sicpcommands.CompleteCommand(Command))
+		return
 	}
 
 	async sendCommand(SICPrequest: Uint8Array): Promise<boolean> {
