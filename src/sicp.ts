@@ -100,6 +100,7 @@ export class SICPClass {
 				wol.wake(macAdd, options)
 				this.#self.log('debug', 'mac: ' + macAdd)
 			}
+			this.sendGetPowerState()
 		}
 	}
 
