@@ -79,13 +79,16 @@ export class SICPClass {
 	}
 
 	RemoveSubscription(FeedbackID: string): void {
+		this.#self.log('debug', 'unsubscribe')
 		const subElement = this.subscriptions.find((element) => element.id == FeedbackID)
-		if (subElement && subElement.count > 1) {
+		if (subElement && subElement.count > 1) subElement.count--
+		else if (subElement) {
 			const index = this.subscriptions.indexOf(subElement)
 			if (index > -1) {
 				this.subscriptions.splice(index, 1)
 			}
-		} else if (subElement) subElement.count--
+			this.#self.log('info', 'Removed subscription: ' + FeedbackID)
+		}
 	}
 
 	async PollFeedback(): Promise<void> {
