@@ -4,7 +4,6 @@
 import { DropdownChoice } from '@companion-module/base'
 import { SICPClass } from './sicp.js'
 
-//const GetPowerState: Array<number> = [0x05, 0x01, 0x00, 0x19, 0x1d]
 export const BaseCommand: Array<number> = [0x01, 0x00]
 
 export const Sources: { choice: DropdownChoice; command: number }[] = [
@@ -64,6 +63,13 @@ export function sendGetPowerState(sicpSocket: SICPClass): void {
 	const Command: Array<number> = getBase()
 	Command.push(0x19)
 	void sicpSocket.sendCommand(CompleteCommand(Command))
+	return
+}
+
+export function sendGetInputSource(sicpsocket: SICPClass): void {
+	const Command: Array<number> = getBase()
+	Command.push(0xad)
+	void sicpsocket.sendCommand(CompleteCommand(Command))
 	return
 }
 

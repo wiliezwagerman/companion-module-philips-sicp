@@ -1,9 +1,15 @@
 import type { PhilipsSICPInstance } from './main.js'
 import { Choices, Sources, SwitchPower, sendSetSource } from './sicpcommand.js'
 
+export enum ActionID {
+	Turn_Off = 'turn_off',
+	Turn_On = 'turn_on',
+	Set_Source = 'set_source',
+}
+
 export function UpdateActions(self: PhilipsSICPInstance): void {
 	self.setActionDefinitions({
-		Turn_Off: {
+		[ActionID.Turn_Off]: {
 			name: 'Turn off',
 			options: [],
 			callback: async () => {

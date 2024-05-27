@@ -3,10 +3,14 @@ import { PhilipsSICPConfig } from './config.js'
 import wol from 'wake_on_lan'
 import { PhilipsSICPInstance } from './main.js'
 import * as sicpcommands from './sicpcommand.js'
+import { FeedbackID } from './feedbacks.js'
 
 export class SICPClass {
 	socket: TCPHelper | undefined
 	regex_mac = new RegExp(/^[0-9a-fA-F]{12}$/)
+	subscriptions = new Array<{ id: string; count: number }>()
+	private pollTimer: NodeJS.Timeout | undefined
+	#testMode = true
 
 	socketStatus: socketStatus = {
 		Initialized: false,
@@ -32,6 +36,10 @@ export class SICPClass {
 		this.#config = self.config
 		this.#self = self
 		this.init_tcp()
+		if (!this.pollTimer)
+			this.pollTimer = setInterval(() => {
+				this.PollFeedback().finally(null)
+			}, 1000)
 	}
 
 	init_tcp(): void {
@@ -58,10 +66,50 @@ export class SICPClass {
 		this.socket._socket.on('timeout', () => {
 			this.socketStatus.InConnection = false
 		})
-		this.socketStatus.Initialized = true
+
+		this.socketStatus.Initialized = this.socket.connect()
+	}
+
+	AddSubscription(FeedbackID: string): void {
+		const subElement = this.subscriptions.find((element) => element.id == FeedbackID)
+		if (!subElement) {
+			this.subscriptions.push({ id: FeedbackID, count: 1 })
+			this.#self.log('info', 'Added subscription: ' + FeedbackID)
+		} else subElement.count++
+	}
+
+	RemoveSubscription(FeedbackID: string): void {
+		const subElement = this.subscriptions.find((element) => element.id == FeedbackID)
+		if (subElement && subElement.count > 1) {
+			const index = this.subscriptions.indexOf(subElement)
+			if (index > -1) {
+				this.subscriptions.splice(index, 1)
+			}
+		} else if (subElement) subElement.count--
+	}
+
+	async PollFeedback(): Promise<void> {
+		this.subscriptions.forEach((t) => {
+			switch (t.id) {
+				case FeedbackID.PowerState: {
+					sicpcommands.sendGetPowerState(this)
+					break
+				}
+				case FeedbackID.InputSource: {
+					sicpcommands.sendGetInputSource(this)
+					break
+				}
+				default:
+					break
+			}
+		})
 	}
 
 	process_data(data: Uint8Array): void {
+		this.printCommand(data, 'received: ')
+		this.socketStatus.InConnection = false
+		if (data[3] != 0x00) this.socketStatus.LastRequestSucces = true
+
 		switch (data[3]) {
 			case 0x19: {
 				if (data[4] == 0x02) this.state.PowerState = true
@@ -72,8 +120,14 @@ export class SICPClass {
 				this.state.InputSource = sicpcommands.Sources.find((t) => t.command == data[4])?.choice.id
 				break
 			}
+			case 0x00: {
+				if (data[4] == 0x06) this.socketStatus.LastRequestSucces = true
+				else this.socketStatus.LastRequestSucces = false
+				break
+			}
 			default:
 		}
+
 		this.#self.checkFeedbacks()
 	}
 
@@ -92,24 +146,27 @@ export class SICPClass {
 			const options: wol.WakeOptions = {
 				port: 9,
 				address: this.#config.broadcast,
-				num_packets: 3,
+				num_packets: 5,
 				interval: 100,
 			}
 			if (this.regex_mac.test(macAdd)) {
 				wol.wake(macAdd, options)
 				this.#self.log('debug', 'mac: ' + macAdd)
 			}
-			sicpcommands.sendGetPowerState(this)
+			setTimeout(() => {
+				sicpcommands.sendGetPowerState(this)
+			}, 500)
 		}
 	}
 
 	async sendCommand(SICPrequest: Uint8Array): Promise<boolean> {
 		const buffer = Buffer.from(SICPrequest)
-		this.printCommand(SICPrequest)
-		this.#self.log('debug', 'buffer:' + buffer.readInt8())
-		if (this.socket == undefined) this.init_tcp()
-		if (this.socket && !this.socket?.isConnected) {
-			this.socket.connect()
+		this.printCommand(SICPrequest, 'send: ')
+		this.socketStatus.LastRequest = SICPrequest
+
+		if (!this.socket) this.init_tcp()
+		if (this.socket && !this.socket?.isConnected) this.socket.connect()
+		if (this.socket && !this.socketStatus.InConnection) {
 			return this.socket.send(buffer)
 		} else
 			return new Promise(() => {
@@ -117,12 +174,14 @@ export class SICPClass {
 			})
 	}
 
-	printCommand(request: Uint8Array): void {
-		let output = ''
-		request.forEach((n) => {
-			output += n.toString(16) + ':'
-		})
-		this.#self.log('debug', output)
+	printCommand(request: Uint8Array, prefix = ''): void {
+		if (this.#testMode) {
+			let output = prefix
+			request.forEach((n) => {
+				output += n.toString(16) + ':'
+			})
+			this.#self.log('debug', output)
+		}
 	}
 }
 
@@ -135,4 +194,6 @@ interface socketStatus {
 	Initialized: boolean
 	InConnection: boolean
 	StatusCode: string
+	LastRequest?: Uint8Array | undefined
+	LastRequestSucces?: boolean
 }
