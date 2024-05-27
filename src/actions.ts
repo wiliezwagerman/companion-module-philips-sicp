@@ -1,5 +1,5 @@
 import type { PhilipsSICPInstance } from './main.js'
-import { Choices, Sources } from './sicpcommand.js'
+import { Choices, Sources, SwitchPower, sendSetSource } from './sicpcommand.js'
 
 export function UpdateActions(self: PhilipsSICPInstance): void {
 	self.setActionDefinitions({
@@ -7,7 +7,7 @@ export function UpdateActions(self: PhilipsSICPInstance): void {
 			name: 'Turn off',
 			options: [],
 			callback: async () => {
-				self.SICP.SwitchPower(false)
+				SwitchPower(self.SICP, false)
 			},
 		},
 		Turn_On: {
@@ -30,7 +30,7 @@ export function UpdateActions(self: PhilipsSICPInstance): void {
 			],
 			callback: async (event) => {
 				const source = event.options.source?.toString()
-				if (source) self.SICP.sendSetSource(source)
+				if (source) sendSetSource(self.SICP, source)
 			},
 		},
 	})

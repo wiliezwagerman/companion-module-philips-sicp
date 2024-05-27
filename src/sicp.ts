@@ -8,7 +8,11 @@ export class SICPClass {
 	socket: TCPHelper | undefined
 	regex_mac = new RegExp(/^[0-9a-fA-F]{12}$/)
 
-	socketStatus = 'Not Initialized'
+	socketStatus: socketStatus = {
+		Initialized: false,
+		InConnection: false,
+		StatusCode: 'Not Initialized',
+	}
 
 	#config: PhilipsSICPConfig = {
 		host: '',
@@ -32,9 +36,10 @@ export class SICPClass {
 
 	init_tcp(): void {
 		this.socket = new TCPHelper(this.#config.host, this.#config.port)
+		this.socket._socket.setTimeout(500)
 
 		this.socket.on('status_change', (status, message) => {
-			this.socketStatus = status
+			this.socketStatus.StatusCode = status
 			if (message != undefined) this.#self.log('debug', message)
 		})
 
@@ -50,6 +55,10 @@ export class SICPClass {
 			this.process_data(dataArray)
 			this.#self.log('debug', 'State: ' + this.state.PowerState)
 		})
+		this.socket._socket.on('timeout', () => {
+			this.socketStatus.InConnection = false
+		})
+		this.socketStatus.Initialized = true
 	}
 
 	process_data(data: Uint8Array): void {
@@ -76,18 +85,8 @@ export class SICPClass {
 		}
 	}
 
-	SwitchPower(state: boolean): void {
-		const Command: Array<number> = sicpcommands.BaseCommand
-		Command.push(0x18)
-		if (state) Command.push(0x01)
-		else Command.push(0x02)
-		void this.sendCommand(sicpcommands.CompleteCommand(Command)).then(() => {
-			this.sendGetPowerState()
-		})
-	}
-
 	sendTurnOn(): void {
-		if (!this.#config.wol) this.SwitchPower(true)
+		if (!this.#config.wol) sicpcommands.SwitchPower(this, true)
 		else {
 			const macAdd: string = this.#config.mac.replace(/[:.-]/g, '')
 			const options: wol.WakeOptions = {
@@ -100,41 +99,40 @@ export class SICPClass {
 				wol.wake(macAdd, options)
 				this.#self.log('debug', 'mac: ' + macAdd)
 			}
-			this.sendGetPowerState()
+			sicpcommands.sendGetPowerState(this)
 		}
-	}
-
-	sendSetSource(Source: string): void {
-		const Command: Array<number> = sicpcommands.BaseCommand
-		const command: number | undefined = sicpcommands.Sources.find((entry) => entry.choice.id == Source)?.command
-		if (!command) return
-		Command.push(0xac)
-		Command.push(command)
-		Command.push(0x09, 0x01, 0x00)
-		void this.sendCommand(sicpcommands.CompleteCommand(Command))
-	}
-
-	sendGetPowerState(): void {
-		const Command: Array<number> = sicpcommands.BaseCommand
-		Command.push(0x19)
-		void this.sendCommand(sicpcommands.CompleteCommand(Command))
-		return
 	}
 
 	async sendCommand(SICPrequest: Uint8Array): Promise<boolean> {
 		const buffer = Buffer.from(SICPrequest)
+		this.printCommand(SICPrequest)
 		this.#self.log('debug', 'buffer:' + buffer.readInt8())
-		if (this.socket == undefined || !this.socket.isConnected) this.init_tcp()
-		if (this.socket?.isConnected) {
+		if (this.socket == undefined) this.init_tcp()
+		if (this.socket && !this.socket?.isConnected) {
+			this.socket.connect()
 			return this.socket.send(buffer)
 		} else
 			return new Promise(() => {
 				return false
 			})
 	}
+
+	printCommand(request: Uint8Array): void {
+		let output = ''
+		request.forEach((n) => {
+			output += n.toString(16) + ':'
+		})
+		this.#self.log('debug', output)
+	}
 }
 
 interface SICPStatus {
 	PowerState: boolean
 	InputSource?: DropdownChoiceId | undefined
+}
+
+interface socketStatus {
+	Initialized: boolean
+	InConnection: boolean
+	StatusCode: string
 }
