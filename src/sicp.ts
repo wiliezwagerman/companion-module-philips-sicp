@@ -170,6 +170,7 @@ export class SICPClass {
 		if (!this.socket) this.init_tcp()
 		if (this.socket && !this.socket?.isConnected) this.socket.connect()
 		if (this.socket && !this.socketStatus.InConnection) {
+			this.socketStatus.InConnection = true
 			return this.socket.send(buffer)
 		} else
 			return new Promise(() => {
