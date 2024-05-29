@@ -12,19 +12,15 @@ export class SICPClass {
 	regex_mac = new RegExp(/^[0-9a-fA-F]{12}$/)
 	subscriptions = new Array<{ id: string; count: number }>()
 	private pollTimer: NodeJS.Timeout | undefined
-	#testMode = false
+	#testMode = true
 
 	TCPqueue = new pQueue({
 		concurrency: 1,
-		timeout: 500,
+		timeout: 600,
 		autoStart: true,
 	})
 
-	socketStatus: socketStatus = {
-		Initialized: false,
-		InConnection: false,
-		StatusCode: 'Not Initialized',
-	}
+	socketStatus = new socketStatus()
 
 	#config: PhilipsSICPConfig = {
 		host: '',
@@ -46,17 +42,21 @@ export class SICPClass {
 		this.init_tcp()
 		if (!this.pollTimer)
 			this.pollTimer = setInterval(() => {
-				this.PollFeedback().finally(null)
+				void this.PollFeedback()
 			}, 3000)
-
-		this.TCPqueue.on('completed', () => {
-			if (this.#testMode) this.socketStatus.InConnection = false
-		})
 	}
 
 	init_tcp(): void {
 		this.socket = new TCPHelper(this.#config.host, this.#config.port)
-		this.socket._socket.setTimeout(400)
+		this.socket._socket.setTimeout(500, () => {
+			if (this.socketStatus.InConnection) {
+				this.socketStatus.InConnection = false
+				this.socket?._socket.removeAllListeners()
+				this.socketStatus.Initialized = false
+				this.init_tcp()
+				this.#self.log('warn', 'Connection timed out! Display did not respond.')
+			}
+		})
 
 		this.socket.on('status_change', (status, message) => {
 			this.socketStatus.StatusCode = status
@@ -74,9 +74,6 @@ export class SICPClass {
 			const dataArray = new Uint8Array(data)
 			this.process_data(dataArray)
 			this.#self.log('debug', 'State: ' + this.state.PowerState)
-		})
-		this.socket._socket.on('timeout', () => {
-			this.socketStatus.InConnection = false
 		})
 
 		this.socketStatus.Initialized = this.socket.connect()
@@ -233,10 +230,28 @@ interface SICPStatus {
 	InputSource?: DropdownChoiceId | undefined
 }
 
-interface socketStatus {
-	Initialized: boolean
-	InConnection: boolean
-	StatusCode: string
+class socketStatus {
+	Initialized = false
+	private _InConnection = false
+	StatusCode = 'Not Initialized'
 	LastRequest?: Uint8Array | undefined
 	LastRequestSucces?: boolean
+
+	ConnectionTimer: NodeJS.Timeout | undefined
+
+	public set InConnection(_state: boolean) {
+		if (_state) {
+			this.ConnectionTimer = setTimeout(() => {
+				this._InConnection = false
+			}, 500)
+			if (!this._InConnection) this._InConnection = true
+		} else {
+			this.ConnectionTimer = undefined
+			this._InConnection = false
+		}
+	}
+
+	public get InConnection() {
+		return this._InConnection
+	}
 }
