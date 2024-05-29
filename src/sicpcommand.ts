@@ -2,7 +2,6 @@
 //const requestSICPVersion: Array<number> = [0x06, 0x01, 0x00, 0xa2, 0x00, 0xa5]
 
 import { DropdownChoice } from '@companion-module/base'
-import { SICPClass } from './sicp.js'
 
 export const BaseCommand: Array<number> = [0x01, 0x00]
 
@@ -38,39 +37,34 @@ export function Choices(): DropdownChoice[] {
 	return output
 }
 
-export function SwitchPower(sicpSocket: SICPClass, state: boolean): void {
+export function SetPowerStateRequest(state: boolean): Uint8Array {
 	const Command: Array<number> = getBase()
 	Command.push(0x18)
-	if (state) Command.push(0x01)
-	else Command.push(0x02)
-	void sicpSocket.sendCommand(CompleteCommand(Command)).then(() => {
-		sendGetPowerState(sicpSocket)
-	})
+	if (state) Command.push(0x02)
+	else Command.push(0x01)
+	return CompleteCommand(Command)
 }
 
-export function sendSetSource(sicpSocket: SICPClass, Source: string): void {
+export function SetSourceRequest(Source: string): Uint8Array | undefined {
 	const Command: Array<number> = getBase()
-	sicpSocket.printCommand(new Uint8Array(BaseCommand))
 	const command: number | undefined = Sources.find((entry) => entry.choice.id == Source)?.command
 	if (!command) return
 	Command.push(0xac)
 	Command.push(command)
 	Command.push(0x09, 0x01, 0x00)
-	void sicpSocket.sendCommand(CompleteCommand(Command))
+	return CompleteCommand(Command)
 }
 
-export function sendGetPowerState(sicpSocket: SICPClass): void {
+export function GetPowerStateRequest(): Uint8Array {
 	const Command: Array<number> = getBase()
 	Command.push(0x19)
-	void sicpSocket.sendCommand(CompleteCommand(Command))
-	return
+	return CompleteCommand(Command)
 }
 
-export function sendGetInputSource(sicpsocket: SICPClass): void {
+export function GetInputSourceRequest(): Uint8Array {
 	const Command: Array<number> = getBase()
 	Command.push(0xad)
-	void sicpsocket.sendCommand(CompleteCommand(Command))
-	return
+	return CompleteCommand(Command)
 }
 
 function getBase(): Array<number> {

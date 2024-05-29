@@ -26,6 +26,7 @@ export class PhilipsSICPInstance extends InstanceBase<PhilipsSICPConfig> {
 	// When module gets deleted
 	async destroy(): Promise<void> {
 		this.log('debug', 'destroy')
+		this.SICP.destroy()
 	}
 
 	async configUpdated(config: PhilipsSICPConfig): Promise<void> {

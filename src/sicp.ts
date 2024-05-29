@@ -4,13 +4,21 @@ import wol from 'wake_on_lan'
 import { PhilipsSICPInstance } from './main.js'
 import * as sicpcommands from './sicpcommand.js'
 import { FeedbackID } from './feedbacks.js'
+import pQueue from 'p-queue'
+import delay from 'delay'
 
 export class SICPClass {
 	socket: TCPHelper | undefined
 	regex_mac = new RegExp(/^[0-9a-fA-F]{12}$/)
 	subscriptions = new Array<{ id: string; count: number }>()
 	private pollTimer: NodeJS.Timeout | undefined
-	#testMode = true
+	#testMode = false
+
+	TCPqueue = new pQueue({
+		concurrency: 1,
+		timeout: 500,
+		autoStart: true,
+	})
 
 	socketStatus: socketStatus = {
 		Initialized: false,
@@ -39,12 +47,16 @@ export class SICPClass {
 		if (!this.pollTimer)
 			this.pollTimer = setInterval(() => {
 				this.PollFeedback().finally(null)
-			}, 1000)
+			}, 3000)
+
+		this.TCPqueue.on('completed', () => {
+			if (this.#testMode) this.socketStatus.InConnection = false
+		})
 	}
 
 	init_tcp(): void {
 		this.socket = new TCPHelper(this.#config.host, this.#config.port)
-		this.socket._socket.setTimeout(500)
+		this.socket._socket.setTimeout(400)
 
 		this.socket.on('status_change', (status, message) => {
 			this.socketStatus.StatusCode = status
@@ -79,7 +91,7 @@ export class SICPClass {
 	}
 
 	RemoveSubscription(FeedbackID: string): void {
-		this.#self.log('debug', 'unsubscribe')
+		this.#self.log('debug', 'unsubscribe ' + FeedbackID)
 		const subElement = this.subscriptions.find((element) => element.id == FeedbackID)
 		if (subElement && subElement.count > 1) subElement.count--
 		else if (subElement) {
@@ -95,11 +107,11 @@ export class SICPClass {
 		this.subscriptions.forEach((t) => {
 			switch (t.id) {
 				case FeedbackID.PowerState: {
-					sicpcommands.sendGetPowerState(this)
+					this.AddToQueue(sicpcommands.GetPowerStateRequest())
 					break
 				}
 				case FeedbackID.InputSource: {
-					sicpcommands.sendGetInputSource(this)
+					this.AddToQueue(sicpcommands.GetInputSourceRequest())
 					break
 				}
 				default:
@@ -143,7 +155,7 @@ export class SICPClass {
 	}
 
 	sendTurnOn(): void {
-		if (!this.#config.wol) sicpcommands.SwitchPower(this, true)
+		if (!this.#config.wol) this.AddToQueue(sicpcommands.SetPowerStateRequest(true))
 		else {
 			const macAdd: string = this.#config.mac.replace(/[:.-]/g, '')
 			const options: wol.WakeOptions = {
@@ -157,20 +169,42 @@ export class SICPClass {
 				this.#self.log('debug', 'mac: ' + macAdd)
 			}
 			setTimeout(() => {
-				sicpcommands.sendGetPowerState(this)
+				this.AddToQueue(sicpcommands.GetPowerStateRequest())
 			}, 500)
+		}
+	}
+
+	AddToQueue(SICPrequest: Uint8Array | undefined): void {
+		if (SICPrequest) {
+			try {
+				void this.TCPqueue.add(async () => {
+					const success = await this.sendCommand(SICPrequest)
+					if (this.#testMode) {
+						this.#self.log('debug', 'IsSend:' + String(success))
+					}
+				})
+			} catch (error) {
+				this.#self.log('warn', 'cannot send')
+			}
 		}
 	}
 
 	async sendCommand(SICPrequest: Uint8Array): Promise<boolean> {
 		const buffer = Buffer.from(SICPrequest)
-		this.printCommand(SICPrequest, 'send: ')
 		this.socketStatus.LastRequest = SICPrequest
+		if (this.#testMode) this.#self.log('debug', 'InConnection: ' + this.socketStatus.InConnection)
 
 		if (!this.socket) this.init_tcp()
 		if (this.socket && !this.socket?.isConnected) this.socket.connect()
+
+		for (let i = 0; i < 100; i++) {
+			if (!this.socketStatus.InConnection) break
+			await delay(10)
+		}
+
 		if (this.socket && !this.socketStatus.InConnection) {
 			this.socketStatus.InConnection = true
+			this.printCommand(SICPrequest, 'send: ')
 			return this.socket.send(buffer)
 		} else
 			return new Promise(() => {
@@ -186,6 +220,11 @@ export class SICPClass {
 			})
 			this.#self.log('debug', output)
 		}
+	}
+
+	destroy(): void {
+		this.TCPqueue.clear()
+		this.socket?.destroy()
 	}
 }
 

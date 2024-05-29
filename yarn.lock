@@ -926,6 +926,11 @@
   "resolved" "https://registry.npmjs.org/deep-is/-/deep-is-0.1.4.tgz"
   "version" "0.1.4"
 
+"delay@^6.0.0":
+  "integrity" "sha512-2NJozoOHQ4NuZuVIr5CWd0iiLVIRSDepakaovIN+9eIDHEhdCAEvSy2cuf1DCrPPQLvHmbqTHODlhHg8UCy4zw=="
+  "resolved" "https://registry.npmjs.org/delay/-/delay-6.0.0.tgz"
+  "version" "6.0.0"
+
 "diff-sequences@^29.6.3":
   "integrity" "sha512-EjePK1srD3P08o2j4f0ExnylqRs5B9tJjcp9t1krH2qRi8CCdsYfwe9JgSLurFBWwq4uOlipzfk5fHNvwFKr8Q=="
   "resolved" "https://registry.npmjs.org/diff-sequences/-/diff-sequences-29.6.3.tgz"
@@ -2026,6 +2031,14 @@
     "eventemitter3" "^4.0.4"
     "p-timeout" "^3.2.0"
 
+"p-queue@^8.0.1":
+  "integrity" "sha512-NXzu9aQJTAzbBqOt2hwsR63ea7yvxJc0PwN/zobNAudYfb1B7R08SzB4TsLeSbUCuG467NhnoT0oO6w1qRO+BA=="
+  "resolved" "https://registry.npmjs.org/p-queue/-/p-queue-8.0.1.tgz"
+  "version" "8.0.1"
+  dependencies:
+    "eventemitter3" "^5.0.1"
+    "p-timeout" "^6.1.2"
+
 "p-timeout@^3.2.0":
   "integrity" "sha512-rhIwUycgwwKcP9yTOOFK/AKsAopjjCakVqLHePO3CC6Mir1Z99xT+R63jZxAT5lFZLa2inS5h+ZS2GvR99/FBg=="
   "resolved" "https://registry.npmjs.org/p-timeout/-/p-timeout-3.2.0.tgz"
@@ -2037,6 +2050,11 @@
   "integrity" "sha512-+/wmHtzJuWii1sXn3HCuH/FTwGhrp4tmJTxSKJbfS+vkipci6osxXM5mY0jUiRzWKMTgUT8l7HFbeSwZAynqHw=="
   "resolved" "https://registry.npmjs.org/p-timeout/-/p-timeout-4.1.0.tgz"
   "version" "4.1.0"
+
+"p-timeout@^6.1.2":
+  "integrity" "sha512-UbD77BuZ9Bc9aABo74gfXhNvzC9Tx7SxtHSh1fxvx3jTLLYvmVhiQZZrJzqqU0jKbN32kb5VOKiLEQI/3bIjgQ=="
+  "resolved" "https://registry.npmjs.org/p-timeout/-/p-timeout-6.1.2.tgz"
+  "version" "6.1.2"
 
 "p-try@^2.0.0":
   "integrity" "sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ=="

@@ -20,7 +20,9 @@
 	},
 	"dependencies": {
 		"@companion-module/base": "~1.7.0",
+		"delay": "^6.0.0",
 		"eslint": "^8.57.0",
+		"p-queue": "^8.0.1",
 		"wake_on_lan": "^1.0.0"
 	},
 	"devDependencies": {
