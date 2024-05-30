@@ -1,5 +1,12 @@
 import type { PhilipsSICPInstance } from './main.js'
-import { Choices, Sources, SetPowerStateRequest, SetSourceRequest } from './sicpcommand.js'
+import {
+	Choices,
+	Sources,
+	SetPowerStateRequest,
+	SetSourceRequest,
+	GetPowerStateRequest,
+	GetInputSourceRequest,
+} from './sicpcommand.js'
 
 export enum ActionID {
 	Turn_Off = 'turn_off',
@@ -13,7 +20,7 @@ export function UpdateActions(self: PhilipsSICPInstance): void {
 			name: 'Turn off',
 			options: [],
 			callback: async () => {
-				self.SICP.AddToQueue(SetPowerStateRequest(false))
+				self.SICP.AddToQueue([SetPowerStateRequest(false), GetPowerStateRequest()])
 			},
 		},
 		Turn_On: {
@@ -36,7 +43,10 @@ export function UpdateActions(self: PhilipsSICPInstance): void {
 			],
 			callback: async (event) => {
 				const source = event.options.source?.toString()
-				if (source) self.SICP.AddToQueue(SetSourceRequest(source))
+				if (source) {
+					const request = SetSourceRequest(source)
+					if (source && request) self.SICP.AddToQueue([request, GetInputSourceRequest()])
+				}
 			},
 		},
 	})

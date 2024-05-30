@@ -144,10 +144,13 @@ export class SICPClass {
 	}
 
 	updateConfig(config: PhilipsSICPConfig): void {
-		if (config.host !== this.#config.host || config.port !== this.#config.port) {
+		this.#self.log('debug', 'Config has changed')
+		if (JSON.stringify(config) !== JSON.stringify(this.#config)) {
 			this.#config = config
-			this.socket?.destroy()
-			this.init_tcp()
+			if (this.#config.host != config.host || this.#config.port != config.port) {
+				this.socket?.destroy()
+				this.init_tcp()
+			}
 		}
 	}
 
@@ -171,18 +174,26 @@ export class SICPClass {
 		}
 	}
 
-	AddToQueue(SICPrequest: Uint8Array | undefined): void {
-		if (SICPrequest) {
-			try {
-				void this.TCPqueue.add(async () => {
-					const success = await this.sendCommand(SICPrequest)
-					if (this.#testMode) {
-						this.#self.log('debug', 'IsSend:' + String(success))
-					}
-				})
-			} catch (error) {
-				this.#self.log('warn', 'cannot send')
-			}
+	AddToQueue(SICPrequest: Uint8Array | Array<Uint8Array> | undefined): void {
+		if (SICPrequest instanceof Uint8Array) {
+			this.SingleToQueue(SICPrequest)
+		} else if (SICPrequest instanceof Array) {
+			SICPrequest.forEach((instance) => {
+				if (instance instanceof Uint8Array) this.SingleToQueue(instance)
+			})
+		}
+	}
+
+	private SingleToQueue(SICPrequest: Uint8Array): void {
+		try {
+			void this.TCPqueue.add(async () => {
+				const success = await this.sendCommand(SICPrequest)
+				if (this.#testMode) {
+					this.#self.log('debug', 'IsSend:' + String(success))
+				}
+			})
+		} catch (error) {
+			this.#self.log('warn', 'cannot send')
 		}
 	}
 
