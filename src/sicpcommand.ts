@@ -3,7 +3,7 @@
 
 import { DropdownChoice } from '@companion-module/base'
 
-export const BaseCommand: Array<number> = [0x01, 0x00]
+export const ControlByte = 0x01
 
 export const Sources: { choice: DropdownChoice; command: number }[] = [
 	{ choice: { id: 'HDMI1', label: 'HDMI 1' }, command: 0x0d },
@@ -37,21 +37,26 @@ export function Choices(): DropdownChoice[] {
 	return output
 }
 
-export function SetPowerStateRequest(state: boolean): Uint8Array {
-	const Command: Array<number> = getBase()
+export function SetPowerStateRequest(state: boolean, groupID: number): Uint8Array {
+	const Command: Array<number> = getBase(groupID)
 	Command.push(0x18)
 	if (state) Command.push(0x02)
 	else Command.push(0x01)
 	return CompleteCommand(Command)
 }
 
-export function SetSourceRequest(Source: string): Uint8Array | undefined {
-	const Command: Array<number> = getBase()
+export function SetSourceRequest(Source: string, groupID: number, OSD: any = true): Uint8Array | undefined {
+	const Command: Array<number> = getBase(groupID)
 	const command: number | undefined = Sources.find((entry) => entry.choice.id == Source)?.command
 	if (!command) return
 	Command.push(0xac)
 	Command.push(command)
-	Command.push(0x09, 0x01, 0x00)
+	Command.push(0x09)
+
+	if (OSD == false) Command.push(0x02)
+	else Command.push(0x01)
+
+	Command.push(0x00)
 	return CompleteCommand(Command)
 }
 
@@ -61,16 +66,21 @@ export function GetPowerStateRequest(): Uint8Array {
 	return CompleteCommand(Command)
 }
 
+export function GetGroupID(): Uint8Array {
+	const Command: Array<number> = getBase(0x00)
+	Command.push(0x5d)
+	return CompleteCommand(Command)
+}
+
 export function GetInputSourceRequest(): Uint8Array {
 	const Command: Array<number> = getBase()
 	Command.push(0xad)
 	return CompleteCommand(Command)
 }
 
-function getBase(): Array<number> {
+function getBase(groupID = 0x00): Array<number> {
 	const output: Array<number> = new Array<number>()
-	BaseCommand.forEach((t) => {
-		output.push(t)
-	})
+	output.push(ControlByte)
+	output.push(groupID)
 	return output
 }

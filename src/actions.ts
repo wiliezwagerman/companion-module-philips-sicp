@@ -9,25 +9,43 @@ import {
 } from './sicpcommand.js'
 
 export enum ActionID {
-	Turn_Off = 'turn_off',
-	Turn_On = 'turn_on',
+	Power = 'power',
 	Set_Source = 'set_source',
 }
 
 export function UpdateActions(self: PhilipsSICPInstance): void {
 	self.setActionDefinitions({
-		[ActionID.Turn_Off]: {
-			name: 'Turn off',
-			options: [],
-			callback: async () => {
-				self.SICP.AddToQueue([SetPowerStateRequest(false), GetPowerStateRequest()])
-			},
-		},
-		Turn_On: {
-			name: 'Turn on',
-			options: [],
-			callback: async () => {
-				self.SICP.sendTurnOn()
+		[ActionID.Power]: {
+			name: 'Power',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'state',
+					label: 'State',
+					choices: [
+						{ id: 'on', label: 'on' },
+						{ id: 'off', label: 'off' },
+						{ id: 'toggle', label: 'toggle' },
+					],
+					default: 'on',
+				},
+			],
+			callback: async (info) => {
+				switch (info.options.state?.toString()) {
+					case 'on': {
+						self.SICP.sendTurnOn()
+						break
+					}
+					case 'off': {
+						self.SICP.AddToQueue([SetPowerStateRequest(false, self.SICP.groupid), GetPowerStateRequest()])
+						break
+					}
+					case 'toggle': {
+						self.SICP.state.ToggleNext = true
+						self.SICP.AddToQueue(GetPowerStateRequest())
+						break
+					}
+				}
 			},
 		},
 		Set_Source: {
@@ -40,11 +58,17 @@ export function UpdateActions(self: PhilipsSICPInstance): void {
 					choices: Choices(),
 					default: Sources[0].choice.id,
 				},
+				{
+					type: 'checkbox',
+					id: 'OSD',
+					label: 'Show source',
+					default: true,
+				},
 			],
 			callback: async (event) => {
 				const source = event.options.source?.toString()
 				if (source) {
-					const request = SetSourceRequest(source)
+					const request = SetSourceRequest(source, self.SICP.groupid, event.options.OSD?.valueOf())
 					if (source && request) self.SICP.AddToQueue([request, GetInputSourceRequest()])
 				}
 			},

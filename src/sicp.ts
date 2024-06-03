@@ -32,6 +32,14 @@ export class SICPClass {
 
 	state: SICPStatus = {
 		PowerState: false,
+		ToggleNext: false,
+	}
+
+	private _groupid = 0x00
+
+	public get groupid(): number {
+		if (this._groupid) return this._groupid
+		return 0x00
 	}
 
 	#self: PhilipsSICPInstance
@@ -44,6 +52,16 @@ export class SICPClass {
 			this.pollTimer = setInterval(() => {
 				void this.PollFeedback()
 			}, 3000)
+
+		this.TCPqueue.on('add', () => {
+			if (this.TCPqueue.size > 20) {
+				this.TCPqueue.clear()
+				this.#self.log('warn', 'Queue overflowed and was emptied!')
+			}
+		})
+		setTimeout(() => {
+			this.AddToQueue(sicpcommands.GetGroupID())
+		}, 500)
 	}
 
 	init_tcp(): void {
@@ -126,6 +144,13 @@ export class SICPClass {
 			case 0x19: {
 				if (data[4] == 0x02) this.state.PowerState = true
 				else this.state.PowerState = false
+				if (this.state.ToggleNext) {
+					this.state.ToggleNext = false
+					if (this.state.PowerState) {
+						this.sendTurnOn()
+						break
+					} else this.AddToQueue(sicpcommands.SetPowerStateRequest(false, this.groupid))
+				}
 				break
 			}
 			case 0xad: {
@@ -135,6 +160,10 @@ export class SICPClass {
 			case 0x00: {
 				if (data[4] == 0x06) this.socketStatus.LastRequestSucces = true
 				else this.socketStatus.LastRequestSucces = false
+				break
+			}
+			case 0x5d: {
+				if (data[0] == 0x06) this._groupid = data[4]
 				break
 			}
 			default:
@@ -152,10 +181,13 @@ export class SICPClass {
 				this.init_tcp()
 			}
 		}
+		setTimeout(() => {
+			this.AddToQueue(sicpcommands.GetGroupID())
+		}, 500)
 	}
 
 	sendTurnOn(): void {
-		if (!this.#config.wol) this.AddToQueue(sicpcommands.SetPowerStateRequest(true))
+		if (!this.#config.wol) this.AddToQueue(sicpcommands.SetPowerStateRequest(true, this.groupid))
 		else {
 			const macAdd: string = this.#config.mac.replace(/[:.-]/g, '')
 			const options: wol.WakeOptions = {
@@ -206,7 +238,7 @@ export class SICPClass {
 		if (this.socket && !this.socket?.isConnected) this.socket.connect()
 
 		for (let i = 0; i < 100; i++) {
-			if (!this.socketStatus.InConnection) break
+			if (!this.socketStatus.InConnection || !this.socketStatus.Initialized) break
 			await delay(10)
 		}
 
@@ -238,6 +270,7 @@ export class SICPClass {
 
 interface SICPStatus {
 	PowerState: boolean
+	ToggleNext: boolean
 	InputSource?: DropdownChoiceId | undefined
 }
 
