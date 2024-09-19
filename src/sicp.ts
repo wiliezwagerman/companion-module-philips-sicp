@@ -1,4 +1,4 @@
-import { DropdownChoiceId, TCPHelper } from '@companion-module/base'
+import { DropdownChoiceId, InstanceStatus, TCPHelper } from '@companion-module/base'
 import { PhilipsSICPConfig } from './config.js'
 import wol from 'wake_on_lan'
 import { PhilipsSICPInstance } from './main.js'
@@ -12,13 +12,11 @@ export class SICPClass {
 	regex_mac = new RegExp(/^[0-9a-fA-F]{12}$/)
 	subscriptions = new Array<{ id: string; count: number }>()
 	private pollTimer: NodeJS.Timeout | undefined
-	#testMode = true
+	#testMode = false
+	private pollTime = 300
+	private reconnectionPoll: NodeJS.Timeout | undefined
 
-	TCPqueue = new pQueue({
-		concurrency: 1,
-		timeout: 600,
-		autoStart: true,
-	})
+	TCPqueue: pQueue | undefined
 
 	socketStatus = new socketStatus()
 
@@ -47,15 +45,25 @@ export class SICPClass {
 	constructor(self: PhilipsSICPInstance) {
 		this.#config = self.config
 		this.#self = self
+		if (this.#testMode) this.pollTime = 3000
 		this.init_tcp()
+	}
+
+	init_tcpqueue(): void {
+		this.TCPqueue = new pQueue({
+			concurrency: 1,
+			timeout: 600,
+			autoStart: true,
+		})
+
 		if (!this.pollTimer)
 			this.pollTimer = setInterval(() => {
 				void this.PollFeedback()
-			}, 3000)
+			}, this.pollTime)
 
-		this.TCPqueue.on('add', () => {
-			if (this.TCPqueue.size > 20) {
-				this.TCPqueue.clear()
+		this.TCPqueue?.on('add', () => {
+			if (this.TCPqueue && this.TCPqueue?.size > 20) {
+				this.TCPqueue?.clear()
 				this.#self.log('warn', 'Queue overflowed and was emptied!')
 			}
 		})
@@ -65,12 +73,15 @@ export class SICPClass {
 	}
 
 	init_tcp(): void {
+		this.#self.updateStatus(InstanceStatus.Connecting)
 		this.socket = new TCPHelper(this.#config.host, this.#config.port)
 		this.socket._socket.setTimeout(500, () => {
 			if (this.socketStatus.InConnection) {
 				this.socketStatus.InConnection = false
 				this.socket?._socket.removeAllListeners()
 				this.socketStatus.Initialized = false
+				this.#self.updateStatus(InstanceStatus.Disconnected)
+				this.socket?.destroy()
 				this.init_tcp()
 				this.#self.log('warn', 'Connection timed out! Display did not respond.')
 			}
@@ -82,10 +93,9 @@ export class SICPClass {
 		})
 
 		this.socket.on('error', (err) => {
-			this.#self.log('debug', 'Network error ' + err)
-			this.#self.log('error', 'Network error: ' + err.message)
 			this.state.PowerState = false
 			this.#self.checkFeedbacks()
+			this.processTcpError(err)
 		})
 
 		this.socket.on('data', (data) => {
@@ -95,6 +105,11 @@ export class SICPClass {
 		})
 
 		this.socketStatus.Initialized = this.socket.connect()
+		if (this.socketStatus.Initialized && this.socket.isConnected) {
+			this.stopReconnectionPoll()
+			this.#self.updateStatus(InstanceStatus.Ok)
+			this.init_tcpqueue()
+		}
 	}
 
 	AddSubscription(FeedbackID: string): void {
@@ -144,9 +159,10 @@ export class SICPClass {
 			case 0x19: {
 				if (data[4] == 0x02) this.state.PowerState = true
 				else this.state.PowerState = false
+				if (this.#testMode) this.#self.log('debug', 'ToggleNext: ' + this.state.ToggleNext)
 				if (this.state.ToggleNext) {
 					this.state.ToggleNext = false
-					if (this.state.PowerState) {
+					if (!this.state.PowerState) {
 						this.sendTurnOn()
 						break
 					} else this.AddToQueue(sicpcommands.SetPowerStateRequest(false, this.groupid))
@@ -170,6 +186,22 @@ export class SICPClass {
 		}
 
 		this.#self.checkFeedbacks()
+	}
+
+	processTcpError(error: Error): void {
+		let tryReconnect = false
+		if (error.message.match(/(ECONNREFUSED)/i)) {
+			tryReconnect = true
+			this.#self.updateStatus(InstanceStatus.ConnectionFailure)
+			this.#self.log('error', 'Network error: Could not connect to display')
+		} else {
+			tryReconnect = false
+			this.#self.updateStatus(InstanceStatus.UnknownError)
+		}
+
+		if (tryReconnect) this.startReconnectionPoll()
+		else this.stopReconnectionPoll()
+		this.#self.log('debug', 'Network error ' + error)
 	}
 
 	updateConfig(config: PhilipsSICPConfig): void {
@@ -207,6 +239,7 @@ export class SICPClass {
 	}
 
 	AddToQueue(SICPrequest: Uint8Array | Array<Uint8Array> | undefined): void {
+		if (!this.socketStatus.Initialized) return
 		if (SICPrequest instanceof Uint8Array) {
 			this.SingleToQueue(SICPrequest)
 		} else if (SICPrequest instanceof Array) {
@@ -218,7 +251,7 @@ export class SICPClass {
 
 	private SingleToQueue(SICPrequest: Uint8Array): void {
 		try {
-			void this.TCPqueue.add(async () => {
+			void this.TCPqueue?.add(async () => {
 				const success = await this.sendCommand(SICPrequest)
 				if (this.#testMode) {
 					this.#self.log('debug', 'IsSend:' + String(success))
@@ -234,7 +267,7 @@ export class SICPClass {
 		this.socketStatus.LastRequest = SICPrequest
 		if (this.#testMode) this.#self.log('debug', 'InConnection: ' + this.socketStatus.InConnection)
 
-		if (!this.socket) this.init_tcp()
+		if (!this.socket || this.socket.isDestroyed) return false
 		if (this.socket && !this.socket?.isConnected) this.socket.connect()
 
 		for (let i = 0; i < 100; i++) {
@@ -262,8 +295,23 @@ export class SICPClass {
 		}
 	}
 
+	//Polls
+	startReconnectionPoll(): void {
+		this.stopReconnectionPoll()
+		this.reconnectionPoll = setInterval(() => {
+			this.init_tcp()
+		}, 5000)
+	}
+
+	stopReconnectionPoll(): void {
+		if (this.reconnectionPoll) {
+			clearInterval(this.reconnectionPoll)
+			delete this.reconnectionPoll
+		}
+	}
+
 	destroy(): void {
-		this.TCPqueue.clear()
+		this.TCPqueue?.clear()
 		this.socket?.destroy()
 	}
 }

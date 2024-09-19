@@ -16,13 +16,22 @@ Or Wake On LAN should be enabled on both the display and the module config.
 
 Currently the following actions are supported.
 
-- Turn On
-- Turn Off
+- Power
+  - On
+  - Off
+  - Toggle
 - Set Input Source
+
+## Feedback
+
+Currently the following feedbacks are supported.
+
+- Power
+- Input Source
 
 ## Supported Devices
 
-The module has been tested with Philips 86BDL3511Q,
+The module has been tested with Philips 86BDL3511Q (Q-line),
 but should be compatible with other displays supporting
 [SERIAL / ETHERNET INTERFACE COMMUNICATION PROTOCOL v2.03](https://community.xibo.org.uk/uploads/short-url/vwVq2nPyhJKL4kTCYpa6VYhQUa8.pdf)
 According to the documentation the following models should be supported:
