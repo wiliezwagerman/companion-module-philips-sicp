@@ -12,8 +12,8 @@ export class SICPClass {
 	regex_mac = new RegExp(/^[0-9a-fA-F]{12}$/)
 	subscriptions = new Array<{ id: string; count: number }>()
 	private pollTimer: NodeJS.Timeout | undefined
-	#testMode = false
-	private pollTime = 300
+	#testMode = true
+	private pollTime = 600
 	private reconnectionPoll: NodeJS.Timeout | undefined
 
 	TCPqueue: pQueue | undefined
@@ -47,6 +47,7 @@ export class SICPClass {
 		this.#self = self
 		if (this.#testMode) this.pollTime = 3000
 		this.init_tcp()
+		this.init_tcpqueue()
 	}
 
 	init_tcpqueue(): void {
@@ -108,7 +109,6 @@ export class SICPClass {
 		if (this.socketStatus.Initialized && this.socket.isConnected) {
 			this.stopReconnectionPoll()
 			this.#self.updateStatus(InstanceStatus.Ok)
-			this.init_tcpqueue()
 		}
 	}
 
@@ -190,6 +190,8 @@ export class SICPClass {
 
 	processTcpError(error: Error): void {
 		let tryReconnect = false
+		this.TCPqueue?.pause()
+		this.TCPqueue = undefined
 		if (error.message.match(/(ECONNREFUSED)/i)) {
 			tryReconnect = true
 			this.#self.updateStatus(InstanceStatus.ConnectionFailure)
@@ -300,6 +302,7 @@ export class SICPClass {
 		this.stopReconnectionPoll()
 		this.reconnectionPoll = setInterval(() => {
 			this.init_tcp()
+			this.init_tcpqueue()
 		}, 5000)
 	}
 
