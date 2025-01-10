@@ -1,5 +1,7 @@
 # companion-module-philips-sicp
 
+# DEPRECATED moved to [bitfocus/companion-module-philips-sicp](https://github.com/bitfocus/companion-module-philips-sicp)
+
 See [HELP.md](./companion/HELP.md) and [LICENSE](./LICENSE)
 
 ## Getting started
